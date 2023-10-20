@@ -1,2 +1,4 @@
-# chibicm
-A simple but not too simple certificate management utility.
+# Chibi Certificate Management
+
+Nothing to see here. 
+
