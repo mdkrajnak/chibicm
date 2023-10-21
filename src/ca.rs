@@ -88,16 +88,18 @@ pub fn mk_request(key_pair: &PKey<Private>, x509_name: &X509Name) -> Result<X509
 pub fn mk_ca_signed_cert(ca_cert: &X509Ref, ca_key_pair: &PKeyRef<Private>, req: &X509Req) -> Result<(X509, PKey<Private>), ErrorStack> {
     let mut cert_builder = X509::builder()?;
     cert_builder.set_version(2)?;
+
+    // Assign a random serial number.
     let serial_number = {
         let mut serial = BigNum::new()?;
         serial.rand(159, MsbOption::MAYBE_ZERO, false)?;
         serial.to_asn1_integer()?
     };
+    let pub_key = req.public_key()?;
     cert_builder.set_serial_number(&serial_number)?;
     cert_builder.set_subject_name(req.subject_name())?;
     cert_builder.set_issuer_name(ca_cert.subject_name())?;
-    cert_builder.set_pubkey(&key_pair)?;
-
+    cert_builder.set_pubkey(&pub_key)?;
     
     let not_before = Asn1Time::days_from_now(0)?;
     cert_builder.set_not_before(&not_before)?;
