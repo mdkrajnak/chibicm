@@ -84,8 +84,11 @@ pub fn mk_request(key_pair: &PKey<Private>, x509_name: &X509Name) -> Result<X509
     Ok(req)
 }
 
-/// Make a certificate and private key signed by the given CA cert and private key
-pub fn mk_ca_signed_cert(ca_cert: &X509Ref, ca_key_pair: &PKeyRef<Private>, req: &X509Req) -> Result<(X509, PKey<Private>), ErrorStack> {
+/// Make a certificate from a request using the given CA and private key
+/// 
+/// @TODO
+/// * Pass other options: SAN, digest type, other extensions.
+pub fn mk_ca_signed_cert(ca_cert: &X509Ref, ca_key_pair: &PKeyRef<Private>, req: &X509Req, start: &str, days: u32) -> Result<X509, ErrorStack> {
     let mut cert_builder = X509::builder()?;
     cert_builder.set_version(2)?;
 
@@ -101,9 +104,9 @@ pub fn mk_ca_signed_cert(ca_cert: &X509Ref, ca_key_pair: &PKeyRef<Private>, req:
     cert_builder.set_issuer_name(ca_cert.subject_name())?;
     cert_builder.set_pubkey(&pub_key)?;
     
-    let not_before = Asn1Time::days_from_now(0)?;
+    let not_before = Asn1Time::from_str(start)?;
     cert_builder.set_not_before(&not_before)?;
-    let not_after = Asn1Time::days_from_now(365)?;
+    let not_after = Asn1Time::days_from_now(days)?;
     cert_builder.set_not_after(&not_after)?;
 
     cert_builder.append_extension(BasicConstraints::new().build()?)?;
@@ -128,15 +131,15 @@ pub fn mk_ca_signed_cert(ca_cert: &X509Ref, ca_key_pair: &PKeyRef<Private>, req:
     cert_builder.append_extension(auth_key_identifier)?;
 
     let subject_alt_name = SubjectAlternativeName::new()
-        .dns("*.example.com")
-        .dns("hello.com")
+        .dns("localhost")
+        .ip("127.0.0.1")
         .build(&cert_builder.x509v3_context(Some(ca_cert), None))?;
     cert_builder.append_extension(subject_alt_name)?;
 
     cert_builder.sign(ca_key_pair, MessageDigest::sha256())?;
     let cert = cert_builder.build();
 
-    Ok((cert, key_pair))
+    Ok(cert)
 }
 
 

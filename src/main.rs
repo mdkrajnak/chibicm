@@ -7,48 +7,12 @@ use ca::{mk_private_key, mk_request};
 use chrono::Utc;
 use clap::{Arg, ArgMatches, Command};
 use openssl::error::ErrorStack;
-use openssl::x509::{X509Name, X509NameBuilder, X509VerifyResult};
+use openssl::x509::{X509Name, X509NameBuilder};
 use std::error::Error;
 use std::io::Write;
 
 /// A program that generates ca certs, certs verified by the ca, and public
 /// and private keys.
-
-
-fn now_as_str() -> String {
-    let now = Utc::now();
-    now.format("%Y%m%d%H%M%SZ").to_string()
-}
-
-fn real_main() -> Result<(), ErrorStack> {
-    let (ca_cert, ca_key_pair) = ca::mk_simple_ca_cert(&now_as_str(), 365)?;
-
-    let mut x509_name_builder = X509NameBuilder::new()?;
-    x509_name_builder.append_entry_by_text("O", "MDK")?;
-    let x509_name = x509_name_builder.build();
-
-    let (cert, _key_pair) = ca::mk_ca_signed_cert(&ca_cert, &ca_key_pair, &x509_name)?;
-
-    // Verify that this cert was issued by this ca
-    match ca_cert.issued(&cert) {
-        X509VerifyResult::OK => println!("Certificate verified!"),
-        ver_err => println!("Failed to verify certificate: {}", ver_err),
-    };
-
-    // Write the CA certificate to a file.
-    let mut ca_certificate_file = std::fs::File::create("ca.pem").unwrap();
-    ca_certificate_file.write_all(ca_cert.to_pem().unwrap().as_ref()).unwrap();
-
-    // Write the CA private key to a file.
-    let mut key_file = std::fs::File::create("ca-key.pem").unwrap();
-    key_file.write_all(ca_key_pair.private_key_to_pem_pkcs8().unwrap().as_ref()).unwrap();
-
-    // Write the client certificate to a file.
-    let mut certificate_file = std::fs::File::create("client.pem").unwrap();
-    certificate_file.write_all(cert.to_pem().unwrap().as_ref()).unwrap();
-
-    Ok(())
-}
 
 fn add_arg_to_name(x509_builder: &mut X509NameBuilder, args: &ArgMatches, arg_name: &str, x509_name: &str) -> Result<(), ErrorStack> {
     let arg : Option<&String> = args.get_one(arg_name);
@@ -75,18 +39,35 @@ fn name_from_args(args: &ArgMatches) -> Result<X509Name, ErrorStack> {
     Ok(x509_builder.build())
 }
 
+/// Return true if all of the characters in a string are digits.
 fn is_all_digits(string: &str) -> bool {
     string.chars().all(|c| c.is_digit(10))
 }
 
+// Pad the start time argument if the hours/minutes/seconds have been truncated.
 fn start_time_from_arg(text: &str) -> Result<String, String> {
-    if text.len() != 8 {
-        return Err(format!("Start time given: {text}, must be 8 characters long."));
-    }
     if !is_all_digits(&text) {
         return Err(format!("The start time given: {text}, contains characters that are not digits"));
     }
-    Ok(format!("{text}000000Z"))
+    if text.len() == 8 {
+        return Ok(format!("{text}000000Z"))
+    }
+    if text.len() == 10 {
+        return Ok(format!("{text}0000Z"))
+    }
+    if text.len() == 12 {
+        return Ok(format!("{text}00Z"))
+    }
+    if text.len() == 14 {
+        return Ok(format!("{text}Z"))
+    }
+    if text.len() == 15 {
+        return Ok(format!("{text}"))
+    }
+    if text.len() != 8 {
+        return Err(format!("Start time given: {text}, must be 8 characters long."));
+    }
+    Err(format!("{text} must be in YYYYMMDD, YYYYMMDDHH, YYYYMMDDHHMM, or YYYYMMDDHHMMSS format. Times must be UTC."))
 }
 
 /// Creates a new CA certificate and key and stores them in files.
@@ -99,18 +80,17 @@ fn run_new(args: &ArgMatches) -> Result<(), String> {
     
     // Tried doing this with unwrap_or(default) but it doesn't appear to work like I expect.
     let root = String::from("root");
-    let name_option = args.get_one("name");
-    let name = if name_option.is_some() { name_option.unwrap() } else { &root };
-    
-    // Set the start time, using the supplied value if one, otherwise using now.
-    let start: &String = match args.get_one("start") {
-        Some(value) => value,
-        _ => &Utc::now().format("%Y%m%d%H%M%SZ").to_string()
-    };
+
+    // Process command line arguments.
+    let name = args.get_one("name").unwrap_or(&root);
 
     let default_days: u32 = 365;
-    let days: u32 = args.get_one("days").unwrap_or(&default_days).clone();
+    let days = args.get_one("days").unwrap_or(&default_days).clone();
     
+    // Set the start time, using the supplied value if one, otherwise using now.
+    let default_start =  Utc::now().format("%Y%m%d%H%M%SZ").to_string();
+    let start = start_time_from_arg(args.get_one::<String>("start").unwrap_or(&default_start))?;
+
     let x509_name = name_from_args(&args).unwrap();
     let (ca_cert, ca_key_pair) = ca::mk_ca_cert(&x509_name, &start, days).unwrap();
         
@@ -125,17 +105,19 @@ fn run_new(args: &ArgMatches) -> Result<(), String> {
     Ok(())
 }
 
+/// Create CSR from command line arguments an saves the CSR, public, and private keys to files.
 fn run_csr(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
-    // Tried doing this with unwrap_or(default) but it doesn't appear to work like I expect.
+    // Use values from command line or defaults.
     let client = String::from("client");
-    let name_option = args.get_one("name");
-    let name = if name_option.is_some() { name_option.unwrap() } else { &client };
-    
+    let name = args.get_one("name").unwrap_or(&client);
+
     let default_bits: u32 = 2048;
     let bits: u32 = args.get_one("bits").unwrap_or(&default_bits).clone();
 
-    let x509_name = name_from_args(&args).unwrap();
+    // Construct a X509 name from cli arguments.
+    let x509_name = name_from_args(&args)?;
 
+    // Create a key pair and a CSR.
     let key_pair = mk_private_key(bits)?;
     let csr = mk_request(&key_pair, &x509_name)?;
 
@@ -154,7 +136,17 @@ fn run_csr(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// Sign a CSR with the indicated CA.
+/// Reads the CSR and CA data from files.
+/// Saves the new certificate to a file.
 fn run_sign(args: &ArgMatches) -> Result<(), String> {
+    // Read CA cert, keys, and CSR from files.
+
+    // Get start and days from cli args.
+
+    // Create the cert.
+
+    // Save to file.
     Ok(())
 }
 
@@ -164,15 +156,10 @@ fn run(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
         Some(("new", subargs)) => run_new(subargs)?,
         Some(("sign", subargs)) => run_sign(subargs)?,
 
-        // Modify this to return an error result.
+        // @TODO Modify this to print the unknown command and return an error result.
         _ => println!("Unknown command"),
     };
     
-
-//    match real_main() {
-//        Ok(()) => println!("Finished."),
-//        Err(e) => println!("Error: {}", e),
-//    };
     Ok(())
 }
 
