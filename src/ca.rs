@@ -13,12 +13,27 @@ use openssl::x509::extension::{
     SubjectKeyIdentifier,
 };
 use openssl::x509::{X509Name, X509NameBuilder, X509Ref, X509Req, X509ReqBuilder, X509};
+use chrono::{Duration, NaiveDateTime};
 
 
 /// Make a certificate and private key signed by the given CA cert and private key
 pub fn mk_private_key(bits: u32) -> Result<PKey<Private>, ErrorStack> {
     let rsa = Rsa::generate(bits)?;
     PKey::from_rsa(rsa)
+}
+
+fn days_from_start(start: &String, days: &u32) -> Result<String, ErrorStack> {
+    let time_format = "%Y%m%d%H%M%S";
+    let parsed = NaiveDateTime::parse_from_str(start, time_format);
+
+    let time = match parsed {
+        Ok(value) => value,
+        // @TODO Return a more specific error.
+        _ => return Err(ErrorStack::get())
+    };
+
+    let end = time + Duration::days(i64::from(days.clone()));
+    Ok(end.format(time_format).to_string())
 }
 
 pub fn mk_ca_cert(x509_name: &X509Name, start: &String, days: u32) -> Result<(X509, PKey<Private>), ErrorStack> {
@@ -35,10 +50,14 @@ pub fn mk_ca_cert(x509_name: &X509Name, start: &String, days: u32) -> Result<(X5
     cert_builder.set_subject_name(&x509_name)?;
     cert_builder.set_issuer_name(&x509_name)?;
     cert_builder.set_pubkey(&key_pair)?;
-    //let not_before = Asn1Time::days_from_now(0)?;
-    let not_before = Asn1Time::from_str(start)?;
+
+    let startz = format!("{start}Z");
+    let not_before = Asn1Time::from_str(&startz)?;
     cert_builder.set_not_before(&not_before)?;
-    let not_after = Asn1Time::days_from_now(days)?;
+
+    let end = days_from_start(start, &days)?;
+    let endz = format!("{end}Z");
+    let not_after = Asn1Time::from_str(&endz)?;
     cert_builder.set_not_after(&not_after)?;
 
     cert_builder.append_extension(BasicConstraints::new().critical().ca().build()?)?;
@@ -140,6 +159,26 @@ pub fn mk_ca_signed_cert(ca_cert: &X509Ref, ca_key_pair: &PKeyRef<Private>, req:
     let cert = cert_builder.build();
 
     Ok(cert)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+    use super::*;
+
+    #[test]
+    fn test_days_from_start() -> Result<(), Box<dyn Error>> {
+        let start = String::from("20220102010203");
+        let days : u32 = 10;
+        let expected = String::from("20220112010203");
+
+        let result = days_from_start(&start, &days)?;
+        println!("result {result:?}");
+        assert_eq!(expected, result);
+
+        Ok(())
+    }
 }
 
 
