@@ -43,7 +43,7 @@ chibica generated userA certificates are stored in the file name specified by th
 chibicu private keys are stored in $CU/<crt-name>-key.pem. Where crt-name in the DN of the certificate.
 
 Theefore in order to use chibica to sign user certs with an intemediate crt the intermediate
-data must me imported into the $CA directory.
+data must be imported into the $CA directory.
 ```
 chibica import --in myintermediate.pem
 ```
@@ -55,7 +55,7 @@ chibica and chibicu keep configuration files in $CA and $CU.
 
 # Trusted root certificate.
 
-By default the CA root is in $CA/root-crt.pem, adding the root cert to the locally trusted cert list:
+By default, the CA root is in $CA/root-crt.pem, adding the root cert to the locally trusted cert list:
 ```
 chibica pub
 ```
