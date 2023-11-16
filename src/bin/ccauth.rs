@@ -8,7 +8,7 @@ pub mod ca;
 pub mod app;
 
 use app::*;
-use crate::ca::{mk_ca_cert, mk_ca_signed_cert, mk_private_key};
+use crate::ca::{mk_ca_cert, sign_request, mk_private_key};
 use crate::ca::CaError;
 use chrono::Utc;
 use clap::{Arg, ArgMatches, Command};
@@ -144,7 +144,7 @@ fn run_sign(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let csr = X509Req::from_pem(&csrbytes)?;
 
     // Create the cert and save to file.
-    let cert = mk_ca_signed_cert(&cacert, &private_key, &csr, &start, days)?;
+    let cert = sign_request(&cacert, &private_key, &csr, &start, days)?;
     write_cert_chain(&cert)?;
 
     Ok(())

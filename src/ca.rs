@@ -1,6 +1,5 @@
-#![allow(clippy::uninlined_format_args)]
 
-// A crate that implements the major CA functionality.
+//! A crate that implements the major CA functionality.
 use std::error::Error;
 use std::fmt;
 use std::net::{AddrParseError, IpAddr};
@@ -54,7 +53,7 @@ pub fn mk_private_key(bits: u32) -> Result<PKey<Private>, CaError> {
     Ok(PKey::from_rsa(rsa)?)
 }
 
-pub fn days_from_start(start: &str, days: &u32) -> Result<String, CaError> {
+fn days_from_start(start: &str, days: &u32) -> Result<String, CaError> {
     let time_format = "%Y%m%d%H%M%S";
     let parsed = NaiveDateTime::parse_from_str(start, time_format);
 
@@ -110,19 +109,6 @@ pub fn mk_ca_cert(key_pair: &PKey<Private>, x509_name: &X509Name, start: &String
     let cert = cert_builder.build();
 
     Ok(cert)
-}
-
-/// Make a CA certificate and private key
-pub fn mk_simple_ca_cert(start: &String, days: u32) -> Result<(X509, PKey<Private>), CaError> {
-    let mut x509_name = X509NameBuilder::new()?;
-    x509_name.append_entry_by_text("C", "US")?;
-    x509_name.append_entry_by_text("ST", "TX")?;
-    x509_name.append_entry_by_text("O", "Some CA organization")?;
-    x509_name.append_entry_by_text("CN", "ca test")?;
-    let x509_name = x509_name.build();
-
-    let key_pair = mk_private_key(2048)?;
-    Ok((mk_ca_cert(&key_pair, &x509_name, start, days)?, key_pair))
 }
 
 fn is_ip_addr(address: &str) -> bool {
@@ -203,10 +189,7 @@ pub fn mk_request(key_pair: &PKey<Private>, x509_name: &X509Name, sans: &Vec<&St
 }
 
 /// Make a certificate from a request using the given CA and private key
-///
-/// @TODO
-/// * Pass other options: SAN, digest type, other extensions.
-pub fn mk_ca_signed_cert(ca_cert: &X509Ref, ca_key_pair: &PKeyRef<Private>, req: &X509Req, start: &str, days: u32) -> Result<X509, CaError> {
+pub fn sign_request(ca_cert: &X509Ref, ca_key_pair: &PKeyRef<Private>, req: &X509Req, start: &str, days: u32) -> Result<X509, CaError> {
     let mut cert_builder = X509::builder()?;
     cert_builder.set_version(2)?;
 
@@ -309,6 +292,7 @@ pub fn mk_self_signed_cert(key_pair: &PKey<Private>, x509_name: &X509Name, sans:
 
 #[cfg(test)]
 mod tests {
+    use crate::ca::days_from_start;
     use std::error::Error;
 
     #[test]
@@ -317,7 +301,7 @@ mod tests {
         let days : u32 = 10;
         let expected = String::from("20220112010203");
 
-        let result = crate::ca::days_from_start(&start, &days)?;
+        let result = days_from_start(&start, &days)?;
         println!("result {result:?}");
         assert_eq!(expected, result);
 
