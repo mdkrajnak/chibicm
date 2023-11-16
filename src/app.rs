@@ -1,11 +1,22 @@
 pub mod ca;
 
-use ca::{CaError};
+use crate::ca::{CaError};
 use clap::{ArgMatches};
 use openssl::error::ErrorStack;
 use openssl::x509::{X509Name, X509NameBuilder};
 use std::io::Write;
 use std::fs;
+
+pub fn append_file(fname: &str, bytes: &Vec<u8>) -> Result<(), CaError> {
+    let mut data_file = match fs::OpenOptions::new().create(true).append(true).open(fname) {
+        Ok(f) => f,
+        Err(err) => return Err(CaError::new(format!("Unable to append to file {}: {}", fname, err.to_string()))),
+    };
+    match data_file.write_all(bytes.as_ref()) {
+        Ok(()) => Ok(()),
+        Err(err) => return Err(CaError::new(format!("Unable to append to file {}: {}", fname, err.to_string()))),
+    }
+}
 
 pub fn read_file(fname: &str) -> Result<Vec<u8>, CaError> {
     match fs::read(fname) {
@@ -15,11 +26,11 @@ pub fn read_file(fname: &str) -> Result<Vec<u8>, CaError> {
 }
 
 pub fn write_file(fname: &str, bytes: &Vec<u8>) -> Result<(), CaError> {
-    let mut ca_certificate_file = match fs::File::create(fname) {
+    let mut data_file = match fs::File::create(fname) {
         Ok(f) => f,
         Err(err) => return Err(CaError::new(format!("Unable to write file {}: {}", fname, err.to_string()))),
     };
-    match ca_certificate_file.write_all(bytes.as_ref()) {
+    match data_file.write_all(bytes.as_ref()) {
         Ok(()) => Ok(()),
         Err(err) => return Err(CaError::new(format!("Unable to write file {}: {}", fname, err.to_string()))),
     }

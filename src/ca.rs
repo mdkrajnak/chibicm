@@ -54,7 +54,7 @@ pub fn mk_private_key(bits: u32) -> Result<PKey<Private>, CaError> {
     Ok(PKey::from_rsa(rsa)?)
 }
 
-fn days_from_start(start: &str, days: &u32) -> Result<String, CaError> {
+pub fn days_from_start(start: &str, days: &u32) -> Result<String, CaError> {
     let time_format = "%Y%m%d%H%M%S";
     let parsed = NaiveDateTime::parse_from_str(start, time_format);
 

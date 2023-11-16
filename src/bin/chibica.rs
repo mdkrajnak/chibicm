@@ -8,13 +8,15 @@ pub mod ca;
 pub mod app;
 
 use app::*;
-use ca::{mk_ca_cert, mk_ca_signed_cert};
+use crate::ca::{mk_ca_cert, mk_ca_signed_cert, mk_private_key};
+use crate::ca::CaError;
 use chrono::Utc;
 use clap::{Arg, ArgMatches, Command};
+use openssl::nid::Nid;
 use openssl::pkey::PKey;
-use openssl::x509::{X509, X509Req};
+use openssl::x509::{X509, X509Req, X509NameRef};
 use std::error::Error;
-use crate::ca::mk_private_key;
+use std::path::Path;
 
 /// A program that generates ca certs, certs verified by the ca, and public
 /// and private keys.
@@ -51,6 +53,68 @@ fn run_new(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn get_name_cn(name : &X509NameRef) -> Result<String, CaError> {
+    let cn_entry = name
+        .entries_by_nid(Nid::COMMONNAME)
+        .next()
+        .ok_or(CaError::new("Unable to get certificate common name.".to_string()))?;
+    Ok(cn_entry.data().as_utf8()?.to_string())
+}
+
+fn get_issuer_cn(cert: &X509) -> Result<String, CaError> {
+    Ok(get_name_cn(cert.issuer_name())?)
+}
+
+fn get_cert_cn(cert: &X509) -> Result<String, CaError> {
+    Ok(get_name_cn(cert.subject_name())?)
+}
+
+/// Save the certificate chain to file starting with the created
+/// cert and working our way up the chain.
+///
+/// The chain terminates when any of the conditions are met:
+/// * The issuer CN is the same as the cert's CN.
+/// * The issuer's cert file does not exist.
+/// * The issuer's CN is blank
+///
+/// The later exist as a more graceful way for get_issuer_cn() to
+/// terminate other than returning Err.
+///
+/// We are writing to a file with the certs CN value + ".crt".
+/// We assume the issuers cert is in a file with the issuer's CN + ".crt"
+/// and in the current working directory.
+///
+/// Normally we write the chain right after signing so we should have
+/// access to the immediate parent, but we may not have access to the
+/// full chain.
+fn write_cert_chain(cert: &X509) -> Result<(), CaError> {
+
+    let mut current_cn = get_cert_cn(&cert)?;
+    let mut issuer_cn = get_issuer_cn(&cert)?;
+
+
+    let certchain = format!("{}.crt", current_cn);
+    write_file(&certchain, cert.to_pem()?.as_ref())?;
+
+    while issuer_cn.ne(&current_cn) && issuer_cn.ne("") {
+        let issuer_fname = format!("{issuer_cn}.crt");
+        if Path::new(&issuer_fname).exists() {
+            let issuerbytes = read_file(&issuer_fname)?;
+            let issuercert = X509::from_pem(&issuerbytes)?;
+            append_file(&certchain, issuercert.to_pem()?.as_ref())?;
+
+            current_cn = issuer_cn.clone();
+            issuer_cn = get_issuer_cn(&issuercert)?;
+        }
+        else {
+            // Terminate loop early by making the CN's the same.
+            // @TODO log a warning that the chain is incomplete.
+            issuer_cn = current_cn.clone();
+        };
+    }
+    Ok(())
+}
+
 /// Sign a CSR with the indicated CA.
 /// Reads the CSR and CA data from files.
 /// Saves the new certificate to a file.
@@ -81,7 +145,7 @@ fn run_sign(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
     // Create the cert and save to file.
     let cert = mk_ca_signed_cert(&cacert, &private_key, &csr, &start, days)?;
-    write_file(&format!("{}.crt", csrname), cert.to_pem()?.as_ref())?;
+    write_cert_chain(&cert)?;
 
     Ok(())
 }
@@ -92,7 +156,7 @@ fn run(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
         Some(("sign", subargs)) => run_sign(subargs)?,
 
         // @TODO Modify this to print the unknown command and return an error result.
-        _ => println!("Unknown command"),
+        _ => return Err(Box::try_from(CaError::new("Unknown command".to_string())).unwrap()),
     };
     
     Ok(())
