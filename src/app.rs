@@ -41,7 +41,7 @@ pub fn add_arg_to_name(x509_builder: &mut X509NameBuilder, args: &ArgMatches, ar
     if arg.is_some() {
         let value = arg.unwrap();
         if value.len() != 0 {
-            x509_builder.append_entry_by_text(x509_name, arg.unwrap())?;
+            x509_builder.append_entry_by_text(x509_name, value)?;
         }
     }
     Ok(())
