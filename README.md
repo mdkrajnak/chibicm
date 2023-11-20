@@ -3,7 +3,8 @@
 Chibi Certificate Management is a light-weight certificate management solution
 for use during software development. It is not intended for production use.
 
-"Chibi" is "small" in Japanese and used to encourage you to not use it for large scale use.
+"Chibi" is "small" in Japanese and meant as a reminder of its limited scope.
+
 ## Overview
 
 Chibi CM's goals include:
