@@ -6,8 +6,8 @@
 //!      b) Or it can be for an intermediate certificate to sign other requests.
 //!   2) Generate a self signed certificate to be used by an end entity.
 
-#[path = "../ca.rs"]
-pub mod ca;
+// #[path = "../ca.rs"]
+// pub mod ca;
 
 #[path = "../app.rs"]
 pub mod app;
@@ -40,7 +40,7 @@ fn run_csr(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let default_bits = String::from("2048");
     let bits: u32 = args.get_one("bits").unwrap_or(&default_bits).to_string().parse()?;
 
-    let x509_name = name_from_args(&args)?;
+    let x509_name = name_from_args(args)?;
 
     // Create a key pair and a CSR.
     let key_pair = mk_key_pair(bits)?;
@@ -48,8 +48,7 @@ fn run_csr(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
     // Write the CSR, public key, and private key to files.
     write_file(&format!("{}.csr", name), csr.to_pem()?.as_ref())?;
-    write_file(&format!("{}.key", name), key_pair.public_key_to_pem()?.as_ref())?;
-    write_file(&format!("{}-private.key", name), key_pair.private_key_to_pem_pkcs8()?.as_ref())?;
+    write_file(&format!("{}.key", name), key_pair.private_key_to_pem_pkcs8()?.as_ref())?;
 
     Ok(())
 }
@@ -69,13 +68,13 @@ fn run_self(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let sans : Vec<_> = args.get_many("san").unwrap_or(default_sans).collect();
 
     let default_days  : u32 = 365;
-    let days = args.get_one("days").unwrap_or(&default_days).clone();
+    let days = *args.get_one("days").unwrap_or(&default_days);
 
     let default_start =  Utc::now().format("%Y%m%d%H%M%S").to_string();
     let start = start_time_from_arg(args.get_one::<String>("start").unwrap_or(&default_start))?;
 
     // Get the x509 name.
-    let x509_name = name_from_args(&args)?;
+    let x509_name = name_from_args(args)?;
 
     // Create the cert.
     let key_pair = mk_key_pair(2048)?;
@@ -83,8 +82,7 @@ fn run_self(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
     // Write the certificate, public key, and private key to files.
     write_file(&format!("{}.crt", certname), cert.to_pem()?.as_ref())?;
-    write_file(&format!("{}.key", certname), key_pair.public_key_to_pem()?.as_ref())?;
-    write_file(&format!("{}-private.key", certname), key_pair.private_key_to_pem_pkcs8()?.as_ref())?;
+    write_file(&format!("{}.key", certname), key_pair.private_key_to_pem_pkcs8()?.as_ref())?;
 
     Ok(())
 }
