@@ -11,3 +11,7 @@ clap = "4.4.6"
 env_logger = "0.10.0"
 openssl = "0.10.57"
 regex = { version = "1.10.2", features = [] }
+
+[profile.release]
+lto = true
+opt-level = "z"

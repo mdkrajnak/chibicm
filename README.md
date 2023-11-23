@@ -73,7 +73,8 @@ There are four use cases Chibi CM is meant to support.
 ## Create a New Root CA
 
 The `ccauth new` command can be used to create a new root CA. A root CA may have a name
-which is given with the `--name` option, but defaults to `root` if not specifiied.
+which is given with the `--name` option, but defaults to `root` if not specifiied. The
+specfied same is also used as the certificates common name.
 
 The full set of options includes:
 
@@ -138,8 +139,8 @@ Creates a CSR for the "Me" organization with two SANs: "localhost" and "127.0.0.
 The CSR is saved in the file myserver.csr.
 
 Note that SANs should be IP addresses or DNS names assoctiated with the scope
-of the certificate, or an email address associated with the owner. And normally
-the --san option and --isca are not normally used together.
+of the certificate, or an email address associated with the owner. Normally
+the --san option and --isca are not used together.
 
 For server certificates the common name is typcially the full DNS name of the
 domain being served, and the best practice is to include that domain in the
