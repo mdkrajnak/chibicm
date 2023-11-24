@@ -15,7 +15,7 @@ jobs:
       fail-fast: true
       matrix:
         target:
-          - x86_64-pc-windows-gnu
+#          - x86_64-pc-windows-gnu
           - x86_64-unknown-linux-musl
 #          - x86_64-apple-darwin
 #          - aarch64-unknown-linux-gnu
@@ -30,8 +30,11 @@ jobs:
           toolchain: ${{ matrix.target }}
           rust-version: stable
 
+      - name: Install openssl for ${{ matrix.target }}
+        run: apt install pkg-config libssl-dev
+
       - name: Build the project for ${{ matrix.target }}
-        run: cargo build --target ${{ matrix.target }} --release --all-features -C lto
+        run: cargo build --target ${{ matrix.target }} --release --all-features
 
       - name: Run tests for ${{ matrix.target }}
         run: cargo test --target ${{ matrix.target }} --release
@@ -59,7 +62,7 @@ jobs:
 
       - name: Create release assets ZIP for ${{ matrix.target }}
         run: |
-          zip -r release-assets-${{ matrix.target }}.zip target/release/ccauth target/release/ccuser CHANGELOG.md README.md
+          zip -r release-assets-${{ matrix.target }}.zip target/${{ matrix.target }}/release/ccauth target/${{ matrix.target }}/release/ccuser CHANGELOG.md README.md
 
       - name: Upload release assets for ${{ matrix.target }}
         uses: actions/upload-release-asset@v3
