@@ -24,11 +24,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Rust toolchain for ${{ matrix.target }}
-        uses: actions/rust-toolchain@v2
-        with:
-          toolchain: ${{ matrix.target }}
-          rust-version: stable
+#      - name: Setup Rust toolchain for ${{ matrix.target }}
+#        uses: actions/rust-toolchain@v2
+#        with:
+#          toolchain: ${{ matrix.target }}
+#          rust-version: stable
 
       - name: Install openssl for ${{ matrix.target }}
         run: apt install pkg-config libssl-dev
