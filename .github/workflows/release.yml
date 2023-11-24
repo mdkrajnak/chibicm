@@ -52,11 +52,12 @@ jobs:
           message: "Release v${{ steps.get-cargo-version.outputs.version }}"
           draft: false
 
-      - name: Create release for ${{ matrix.target }}
-        uses: actions/create-release@v3
+      - name: Create release ${{ matrix.target }}
+        id: create-release
+        uses: actions/action-gh-release@v1
         with:
           tag_name: v${{ steps.get-cargo-version.outputs.version }}
-          release_name: "Release v${{ steps.get-cargo-version.outputs.version }}-${{ matrix.target }}"
+          name: "Release v${{ steps.get-cargo-version.outputs.version }}-${{ matrix.target }}"
           draft: true
           prerelease: false
 
