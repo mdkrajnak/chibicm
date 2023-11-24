@@ -39,6 +39,10 @@ jobs:
       - name: Run tests for ${{ matrix.target }}
         run: cargo test --target ${{ matrix.target }} --release
 
+      - name: Create release assets ZIP for ${{ matrix.target }}
+        run: |
+          zip -r release-assets-${{ matrix.target }}.zip target/${{ matrix.target }}/release/ccauth target/${{ matrix.target }}/release/ccuser CHANGELOG.md README.md
+
       - name: Get Cargo version
         id: get-cargo-version
         run: |
@@ -46,30 +50,17 @@ jobs:
 
       - name: Create single tag
         id: create-single-tag
-        uses: actions/create-tag@v3
+        uses: rickstaa/action-create-tag@v1
         with:
           tag: v${{ steps.get-cargo-version.outputs.version }}
           message: "Release v${{ steps.get-cargo-version.outputs.version }}"
-          draft: false
 
       - name: Create release ${{ matrix.target }}
         id: create-release
-        uses: actions/action-gh-release@v1
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.get-cargo-version.outputs.version }}
           name: "Release v${{ steps.get-cargo-version.outputs.version }}-${{ matrix.target }}"
           draft: true
           prerelease: false
-
-      - name: Create release assets ZIP for ${{ matrix.target }}
-        run: |
-          zip -r release-assets-${{ matrix.target }}.zip target/${{ matrix.target }}/release/ccauth target/${{ matrix.target }}/release/ccuser CHANGELOG.md README.md
-
-      - name: Upload release assets for ${{ matrix.target }}
-        uses: actions/upload-release-asset@v3
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./release-assets-${{ matrix.target }}.zip
-          asset_name: release-assets.zip
-          asset_content_type: application/zip
-
+          files: release-assets-${{ matrix.target }}.zip
