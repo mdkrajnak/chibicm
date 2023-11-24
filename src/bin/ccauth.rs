@@ -10,9 +10,6 @@
 //! So the certificate used to sign a request can be the root certificate,
 //! or an intermediate certificate created with a provious request.
 
-/// Certificate module.
-#[path = "../ca.rs"]
-pub mod ca;
 
 /// Application module.
 #[path = "../app.rs"]
@@ -43,7 +40,7 @@ fn run_new(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let name = args.get_one("name").unwrap_or(&root);
 
     let default_days: u32 = 365;
-    let days = args.get_one("days").unwrap_or(&default_days).clone();
+    let days = *args.get_one("days").unwrap_or(&default_days);
     
     // Set the start time, using the supplied value if one, otherwise using now.
     let default_start =  Utc::now().format("%Y%m%d%H%M%S").to_string();
@@ -51,13 +48,12 @@ fn run_new(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
     // Create the root certificate.
     let ca_key_pair = mk_key_pair(2048)?;
-    let x509_name = name_from_args(&args)?;
+    let x509_name = name_from_args(args)?;
     let ca_cert = mk_ca_cert(&ca_key_pair, &x509_name, &start, days)?;
         
     // Write the CA certificate, public key, and private key to files.
     write_file(&format!("{}.crt", name), ca_cert.to_pem()?.as_ref())?;
-    write_file(&format!("{}.key", name), ca_key_pair.public_key_to_pem()?.as_ref())?;
-    write_file(&format!("{}-private.key", name), ca_key_pair.private_key_to_pem_pkcs8()?.as_ref())?;
+    write_file(&format!("{}.key", name), ca_key_pair.private_key_to_pem_pkcs8()?.as_ref())?;
     
     Ok(())
 }
@@ -82,9 +78,8 @@ fn run_new(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
 /// full chain.
 fn write_cert_chain(cert: &X509) -> Result<(), CaError> {
 
-    let mut current_cn = get_subject_cn(&cert)?;
-    let mut issuer_cn = get_issuer_cn(&cert)?;
-
+    let mut current_cn = get_subject_cn(cert)?;
+    let mut issuer_cn = get_issuer_cn(cert)?;
 
     let certchain = format!("{}.crt", current_cn);
     write_file(&certchain, cert.to_pem()?.as_ref())?;
@@ -123,7 +118,7 @@ fn run_sign(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let csrname = args.get_one("name").unwrap_or(&client);
 
     let default_days  : u32 = 365;
-    let days = args.get_one("days").unwrap_or(&default_days).clone();
+    let days = *args.get_one("days").unwrap_or(&default_days);
 
     let default_start =  Utc::now().format("%Y%m%d%H%M%S").to_string();
     let start = start_time_from_arg(args.get_one::<String>("start").unwrap_or(&default_start))?;
@@ -222,7 +217,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .arg(Arg::new("ca")
                 .long("ca")
                 .short('c')
-                .help("The CA to use to sign the certificate, use 'list' to see the available CAs")
+                .help("The CA to use to sign the certificate")
                 .default_value("root"))
             .arg(Arg::new("name")
                 .long("name")

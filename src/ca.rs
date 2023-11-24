@@ -59,12 +59,12 @@ fn get_name_cn(name : &X509NameRef) -> Result<String, CaError> {
 
 /// Get the common name assocatiate with a certficates issuer.
 pub fn get_issuer_cn(cert: &X509) -> Result<String, CaError> {
-    Ok(get_name_cn(cert.issuer_name())?)
+    get_name_cn(cert.issuer_name())
 }
 
 /// Get the common name assocatiate with a certficates subject.
 pub fn get_subject_cn(cert: &X509) -> Result<String, CaError> {
-    Ok(get_name_cn(cert.subject_name())?)
+    get_name_cn(cert.subject_name())
 }
 
 
@@ -80,11 +80,10 @@ fn days_from_start(start: &str, days: &u32) -> Result<String, CaError> {
 
     let time = match parsed {
         Ok(value) => value,
-        // @TODO Return a more specific error.
         _ => return Err(CaError::new(format!("Unable to format time {start}"))),
     };
 
-    let end = time + Duration::days(i64::from(days.clone()));
+    let end = time + Duration::days(i64::from(*days));
     Ok(end.format(time_format).to_string())
 }
 
@@ -98,9 +97,9 @@ pub fn mk_ca_cert(key_pair: &PKey<Private>, x509_name: &X509Name, start: &String
         serial.to_asn1_integer()?
     };
     cert_builder.set_serial_number(&serial_number)?;
-    cert_builder.set_subject_name(&x509_name)?;
-    cert_builder.set_issuer_name(&x509_name)?;
-    cert_builder.set_pubkey(&key_pair)?;
+    cert_builder.set_subject_name(x509_name)?;
+    cert_builder.set_issuer_name(x509_name)?;
+    cert_builder.set_pubkey(key_pair)?;
 
     let startz = format!("{start}Z");
     let not_before = Asn1Time::from_str(&startz)?;
@@ -126,7 +125,7 @@ pub fn mk_ca_cert(key_pair: &PKey<Private>, x509_name: &X509Name, start: &String
         SubjectKeyIdentifier::new().build(&cert_builder.x509v3_context(None, None))?;
     cert_builder.append_extension(subject_key_identifier)?;
 
-    cert_builder.sign(&key_pair, MessageDigest::sha256())?;
+    cert_builder.sign(key_pair, MessageDigest::sha256())?;
     let cert = cert_builder.build();
 
     Ok(cert)
@@ -134,10 +133,7 @@ pub fn mk_ca_cert(key_pair: &PKey<Private>, x509_name: &X509Name, start: &String
 
 fn is_ip_addr(address: &str) -> bool {
     let test_ip : Result<IpAddr, AddrParseError> = address.parse();
-    match test_ip {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    test_ip.is_ok()
 }
 
 fn is_email(email: &str) -> bool {
@@ -149,7 +145,7 @@ fn is_email(email: &str) -> bool {
     email_regex.is_match(email)
 }
 
-fn mk_san_extension(sans: &Vec<&String>, context: &X509v3Context) -> Result<X509Extension, CaError> {
+fn mk_san_extension(sans: &[&String], context: &X509v3Context) -> Result<X509Extension, CaError> {
     let mut subject_alt_name = SubjectAlternativeName::new();
     for san in sans.iter() {
         if is_ip_addr(san) {
@@ -167,12 +163,12 @@ fn mk_san_extension(sans: &Vec<&String>, context: &X509v3Context) -> Result<X509
 pub fn mk_request(key_pair: &PKey<Private>, x509_name: &X509Name, sans: &Vec<&String>, is_ca: bool) -> Result<X509Req, CaError> {
     let mut req_builder = X509ReqBuilder::new()?;
     req_builder.set_pubkey(key_pair)?;
-    req_builder.set_subject_name(&x509_name)?;
+    req_builder.set_subject_name(x509_name)?;
 
     let mut extensions : Stack<X509Extension> = Stack::new()?;
 
     // Add SANs if the SAN vector is not empty.
-    if sans.len() > 0 {
+    if !sans.is_empty() {
         extensions.push(mk_san_extension(sans, &req_builder.x509v3_context(None))?)?;
     }
 
@@ -272,9 +268,9 @@ pub fn mk_self_signed_cert(key_pair: &PKey<Private>, x509_name: &X509Name, sans:
         serial.to_asn1_integer()?
     };
     cert_builder.set_serial_number(&serial_number)?;
-    cert_builder.set_subject_name(&x509_name)?;
-    cert_builder.set_issuer_name(&x509_name)?;
-    cert_builder.set_pubkey(&key_pair)?;
+    cert_builder.set_subject_name(x509_name)?;
+    cert_builder.set_issuer_name(x509_name)?;
+    cert_builder.set_pubkey(key_pair)?;
 
     let startz = format!("{start}Z");
     let not_before = Asn1Time::from_str(&startz)?;
@@ -296,7 +292,7 @@ pub fn mk_self_signed_cert(key_pair: &PKey<Private>, x509_name: &X509Name, sans:
             .build()?,
     )?;
     // Add SANs if the SAN vector is not empty.
-    if sans.len() > 0 {
+    if !sans.is_empty() {
         cert_builder.append_extension(mk_san_extension(sans, &cert_builder.x509v3_context(None, None))?)?;
     }
 
@@ -305,7 +301,7 @@ pub fn mk_self_signed_cert(key_pair: &PKey<Private>, x509_name: &X509Name, sans:
         SubjectKeyIdentifier::new().build(&cert_builder.x509v3_context(None, None))?;
     cert_builder.append_extension(subject_key_identifier)?;
 
-    cert_builder.sign(&key_pair, MessageDigest::sha256())?;
+    cert_builder.sign(key_pair, MessageDigest::sha256())?;
     let cert = cert_builder.build();
 
     Ok(cert)
