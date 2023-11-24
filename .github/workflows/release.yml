@@ -31,7 +31,7 @@ jobs:
 #          rust-version: stable
 
       - name: Install openssl for ${{ matrix.target }}
-        run: apt install pkg-config libssl-dev
+        run: sudo apt install pkg-config libssl-dev
 
       - name: Build the project for ${{ matrix.target }}
         run: cargo build --target ${{ matrix.target }} --release --all-features
