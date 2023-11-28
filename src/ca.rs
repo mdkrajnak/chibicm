@@ -347,7 +347,7 @@ mod tests {
         let subject = "ca-common-name";
 
         let mut x509_builder = X509NameBuilder::new()?;
-        x509_builder.append_entry_by_text("CN", subject.clone())?;
+        x509_builder.append_entry_by_text("CN", subject)?;
         let x509_name = x509_builder.build();
 
         // Set the start to Jan 2, 2022.
@@ -372,7 +372,7 @@ mod tests {
         let subject = "cert-common-name";
 
         let mut x509_builder = X509NameBuilder::new()?;
-        x509_builder.append_entry_by_text("CN", subject.clone())?;
+        x509_builder.append_entry_by_text("CN", subject)?;
         let x509_name = x509_builder.build();
         let san1 = "localhost".to_string();
         let san2 = "127.0.0.1".to_string();
@@ -393,7 +393,7 @@ mod tests {
         let ca_subject = "ca-common-name";
 
         let mut x509_builder = X509NameBuilder::new()?;
-        x509_builder.append_entry_by_text("CN", ca_subject.clone())?;
+        x509_builder.append_entry_by_text("CN", ca_subject)?;
         let x509_name = x509_builder.build();
 
         // Set the start to Jan 2, 2022.
@@ -406,7 +406,7 @@ mod tests {
         let subject = "cert-common-name";
 
         let mut x509_builder = X509NameBuilder::new()?;
-        x509_builder.append_entry_by_text("CN", subject.clone())?;
+        x509_builder.append_entry_by_text("CN", subject)?;
         let x509_name = x509_builder.build();
         let san1 = "localhost".to_string();
         let san2 = "127.0.0.1".to_string();
@@ -444,7 +444,7 @@ mod tests {
         let subject = "cert-common-name";
 
         let mut x509_builder = X509NameBuilder::new()?;
-        x509_builder.append_entry_by_text("CN", subject.clone())?;
+        x509_builder.append_entry_by_text("CN", subject)?;
         let x509_name = x509_builder.build();
 
         // Set the start to Jan 2, 2022.

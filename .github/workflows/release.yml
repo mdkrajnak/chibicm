@@ -8,6 +8,12 @@ on:
     branches:
       - test-release
 
+# Need write permissions for tagging.
+permissions:
+  pull-requests: write
+  issues: write
+  repository-projects: write
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
