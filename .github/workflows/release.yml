@@ -61,6 +61,12 @@ jobs:
         run: |
           cargo metadata | grep version | egrep -o '[[:digit:].]+' > version.txt
 
+      - name: Cat cargo version
+        run: cat version.txt
+
+      - name: Check git config
+        run: git config -l
+
       - name: Create single tag
         id: create-single-tag
         uses: rickstaa/action-create-tag@v1
