@@ -58,8 +58,7 @@ jobs:
 
       - name: Get Cargo version
         id: get-cargo-version
-        run: |
-          cargo metadata | grep version | egrep -o '[[:digit:].]+' > version.txt
+        run: grep ^version Cargo.toml | egrep -o '[[:digit:].]+' > version.txt
 
       - name: Cat cargo version
         run: cat version.txt
