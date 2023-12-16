@@ -11,6 +11,7 @@ on:
 # Need write permissions for tagging.
 permissions:
   actions: write
+  contents: write
   pull-requests: write
   issues: write
   repository-projects: write
