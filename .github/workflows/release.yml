@@ -23,10 +23,10 @@ jobs:
       fail-fast: true
       matrix:
         target:
-#          - x86_64-pc-windows-gnu
+          - x86_64-pc-windows-gnu
           - x86_64-unknown-linux-gnu
-#          - x86_64-apple-darwin
-#          - aarch64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - aarch64-unknown-linux-gnu
 
     steps:
       - name: Checkout repository
@@ -34,12 +34,6 @@ jobs:
 
       - name: Setup git user
         uses: fregante/setup-git-user@v2
-
-#      - name: Setup Rust toolchain for ${{ matrix.target }}
-#        uses: actions/rust-toolchain@v2
-#        with:
-#          toolchain: ${{ matrix.target }}
-#          rust-version: stable
 
       - name: Install openssl for ${{ matrix.target }}
         run: sudo apt install pkg-config libssl-dev
@@ -59,13 +53,7 @@ jobs:
 
       - name: Get Cargo version
         id: get-cargo-version
-        run: grep ^version Cargo.toml | egrep -o '[[:digit:].]+' > version.txt
-
-      - name: Cat cargo version
-        run: cat version.txt
-
-      - name: Check git config
-        run: git config -l
+        run: echo "version=$(grep ^version Cargo.toml | egrep -o '[[:digit:].]+')" >> $GITHUB_OUTPUT
 
       - name: Create single tag
         id: create-single-tag
