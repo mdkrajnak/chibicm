@@ -64,9 +64,6 @@ jobs:
         shell: bash
         run: git show-ref --tags --verify --quiet refs/tags/v${{ steps.get-cargo-version.outputs.version }} && echo exists=1 || echo exists=0 >> $GITHUB_OUTPUT
 
-      - name: Step to only run if there is no git-tag for the version
-        if: steps.tagged.outputs.tagged == 1
-
       # Create a tag if one does not exist.
       - name: Create single tag
         if: steps.tagged.outputs.exists == 0
