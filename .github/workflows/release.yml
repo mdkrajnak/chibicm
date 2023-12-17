@@ -64,6 +64,9 @@ jobs:
         shell: bash
         run: git show-ref --tags --verify --quiet refs/tags/v${{ steps.get-cargo-version.outputs.version }} && echo exists=1 || echo exists=0 >> $GITHUB_OUTPUT
 
+      - name: Echo result to console
+        run: git show-ref --tags --verify --quiet refs/tags/v${{ steps.get-cargo-version.outputs.version }} && echo exists=1 || echo exists=0
+
       # Create a tag if one does not exist.
       - name: Create single tag
         if: ${{ steps.tagged.outputs.exists }} == 0
@@ -71,6 +74,7 @@ jobs:
         uses: rickstaa/action-create-tag@v1
         with:
           tag: v${{ steps.get-cargo-version.outputs.version }}
+          force-push-tag: true
           message: "Release v${{ steps.get-cargo-version.outputs.version }}"
 
       - name: Create release ${{ matrix.target }}
