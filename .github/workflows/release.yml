@@ -20,7 +20,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         target:
           - x86_64-pc-windows-gnu
