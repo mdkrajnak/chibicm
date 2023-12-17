@@ -38,14 +38,17 @@ jobs:
       - name: Install openssl for ${{ matrix.target }}
         run: sudo apt install pkg-config libssl-dev
 
+      - name: Install cross
+        run: cargo install cross
+
       - name: Install toolchain for ${{ matrix.target }}
         run: rustup target add ${{ matrix.target }}
 
       - name: Build the project for ${{ matrix.target }}
-        run: cargo build --target ${{ matrix.target }} --release --all-features
+        run: cross build --target ${{ matrix.target }} --release --all-features
 
       - name: Run tests for ${{ matrix.target }}
-        run: cargo test --target ${{ matrix.target }} --release
+        run: cross test --target ${{ matrix.target }} --release
 
       - name: Create release assets ZIP for ${{ matrix.target }}
         run: |
