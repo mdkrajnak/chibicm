@@ -85,7 +85,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.get-cargo-version.outputs.version }}
-          name: "Release v${{ steps.get-cargo-version.outputs.version }}
+          name: "Release v${{ steps.get-cargo-version.outputs.version }}"
           draft: true
           prerelease: false
           files: release-assets-${{ matrix.target }}.zip
