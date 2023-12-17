@@ -50,7 +50,7 @@ jobs:
       - name: Run tests for ${{ matrix.target }}
         run: cross test --target ${{ matrix.target }} --release
 
-      - name: Create release assets ZIP for ${{ matrix.target }}
+      - name: Create release assets for ${{ matrix.target }}
         run: |
           zip -r release-assets-${{ matrix.target }}.zip target/${{ matrix.target }}/release/ccauth target/${{ matrix.target }}/release/ccuser CHANGELOG.md README.md
 
