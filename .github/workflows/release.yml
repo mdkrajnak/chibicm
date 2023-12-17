@@ -58,7 +58,18 @@ jobs:
         id: get-cargo-version
         run: echo "version=$(grep ^version Cargo.toml | egrep -o '[[:digit:].]+')" >> $GITHUB_OUTPUT
 
+      # Check if tage exists. exists=1 if set, 0 otherwise.
+      - name: 'Check: if the tag is created'
+        id: tagged
+        shell: bash
+        run: git show-ref --tags --verify --quiet refs/tags/v${{ steps.get-cargo-version.outputs.version }} && echo exists=1 || echo exists=0 >> $GITHUB_OUTPUT
+
+      - name: Step to only run if there is no git-tag for the version
+        if: steps.tagged.outputs.tagged == 1
+
+      # Create a tag if one does not exist.
       - name: Create single tag
+        if: steps.tagged.outputs.exists == 0
         id: create-single-tag
         uses: rickstaa/action-create-tag@v1
         with:
