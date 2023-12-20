@@ -1,71 +1,92 @@
 name: Rust Cross-Compile and Release
 
 on:
-# pull_request:
-#   branches:
-#     - main
-  push:
-    branches:
-      - test-release
+ pull_request:
+   branches:
+     - main
+#  push:
+#    branches:
+#      - test-release
+
+# Need write permissions for tagging.
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  issues: write
+  repository-projects: write
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         target:
           - x86_64-pc-windows-gnu
-          - x86_64-unknown-linux-musl
-#          - x86_64-apple-darwin
-#          - aarch64-unknown-linux-gnu
+          - x86_64-unknown-linux-gnu
+          #- aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Rust toolchain for ${{ matrix.target }}
-        uses: actions/rust-toolchain@v2
-        with:
-          toolchain: ${{ matrix.target }}
-          rust-version: stable
+      - name: Setup git user
+        uses: fregante/setup-git-user@v2
+
+      - name: Install openssl for ${{ matrix.target }}
+        run: sudo apt install pkg-config libssl-dev
+
+      - name: Install cross
+        run: cargo install cross
+
+      - name: Install toolchain for ${{ matrix.target }}
+        run: rustup target add ${{ matrix.target }}
 
       - name: Build the project for ${{ matrix.target }}
-        run: cargo build --target ${{ matrix.target }} --release --all-features -C lto
+        run: cross build --target ${{ matrix.target }} --release --all-features
 
       - name: Run tests for ${{ matrix.target }}
-        run: cargo test --target ${{ matrix.target }} --release
+        run: cross test --target ${{ matrix.target }} --release
+
+      # Note we specify binaries twice, e.g. ccuser and ccuser.exe
+      # windows: .exe is included and without .exe is ignored.
+      # others: .exe is ignored and without .exe is included.
+      - name: Create release assets for ${{ matrix.target }}
+        run: |
+          zip -r release-assets-${{ matrix.target }}.zip target/${{ matrix.target }}/release/ccauth target/${{ matrix.target }}/release/ccuser target/${{ matrix.target }}/release/ccauth.exe target/${{ matrix.target }}/release/ccuser.exe
 
       - name: Get Cargo version
         id: get-cargo-version
-        run: |
-          cargo metadata | grep version | egrep -o '[[:digit:].]+' > version.txt
+        run: echo "version=$(grep ^version Cargo.toml | egrep -o '[[:digit:].]+')" >> $GITHUB_OUTPUT
 
+      # Check if tage exists. exists=1 if set, 0 otherwise.
+      - name: 'Check: if the tag is created'
+        id: tagged
+        shell: bash
+        run: git show-ref --tags --verify --quiet refs/tags/v${{ steps.get-cargo-version.outputs.version }} && echo exists=1 || echo exists=0 >> $GITHUB_OUTPUT
+
+      - name: Echo result to console
+        run: git show-ref --tags --verify --quiet refs/tags/v${{ steps.get-cargo-version.outputs.version }} && echo exists=1 || echo exists=0
+
+      # Create a tag if one does not exist.
       - name: Create single tag
+        if: ${{ steps.tagged.outputs.exists }} == 0
         id: create-single-tag
-        uses: actions/create-tag@v3
+        uses: rickstaa/action-create-tag@v1
         with:
           tag: v${{ steps.get-cargo-version.outputs.version }}
+          force_push_tag: true
           message: "Release v${{ steps.get-cargo-version.outputs.version }}"
-          draft: false
 
-      - name: Create release for ${{ matrix.target }}
-        uses: actions/create-release@v3
+      - name: Create release ${{ matrix.target }}
+        id: create-release
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.get-cargo-version.outputs.version }}
-          release_name: "Release v${{ steps.get-cargo-version.outputs.version }}-${{ matrix.target }}"
-          draft: true
+          name: "Release v${{ steps.get-cargo-version.outputs.version }}"
+          body: "[Change Log](https://github.com/mdkrajnak/chibicm/blob/main/CHANGELOG.md#v${{ steps.get-cargo-version.outputs.version }})"
+          draft: false
           prerelease: false
-
-      - name: Create release assets ZIP for ${{ matrix.target }}
-        run: |
-          zip -r release-assets-${{ matrix.target }}.zip target/release/ccauth target/release/ccuser CHANGELOG.md README.md
-
-      - name: Upload release assets for ${{ matrix.target }}
-        uses: actions/upload-release-asset@v3
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./release-assets-${{ matrix.target }}.zip
-          asset_name: release-assets.zip
-          asset_content_type: application/zip
-
+          files: release-assets-${{ matrix.target }}.zip
