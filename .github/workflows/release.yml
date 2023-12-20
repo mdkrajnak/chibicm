@@ -1,12 +1,12 @@
 name: Rust Cross-Compile and Release
 
 on:
-# pull_request:
-#   branches:
-#     - main
-  push:
-    branches:
-      - test-release
+ pull_request:
+   branches:
+     - main
+#  push:
+#    branches:
+#      - test-release
 
 # Need write permissions for tagging.
 permissions:
@@ -55,7 +55,7 @@ jobs:
       # others: .exe is ignored and without .exe is included.
       - name: Create release assets for ${{ matrix.target }}
         run: |
-          zip -r release-assets-${{ matrix.target }}.zip target/${{ matrix.target }}/release/ccauth target/${{ matrix.target }}/release/ccuser target/${{ matrix.target }}/release/ccauth.exe target/${{ matrix.target }}/release/ccuser.exe CHANGELOG.md README.md
+          zip -r release-assets-${{ matrix.target }}.zip target/${{ matrix.target }}/release/ccauth target/${{ matrix.target }}/release/ccuser target/${{ matrix.target }}/release/ccauth.exe target/${{ matrix.target }}/release/ccuser.exe
 
       - name: Get Cargo version
         id: get-cargo-version
@@ -86,6 +86,7 @@ jobs:
         with:
           tag_name: v${{ steps.get-cargo-version.outputs.version }}
           name: "Release v${{ steps.get-cargo-version.outputs.version }}"
-          draft: true
+          body: "[Change Log](https://github.com/mdkrajnak/chibicm/blob/main/CHANGELOG.md#v${{ steps.get-cargo-version.outputs.version }})"
+          draft: false
           prerelease: false
           files: release-assets-${{ matrix.target }}.zip
