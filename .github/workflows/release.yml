@@ -1,9 +1,9 @@
 name: Rust Cross-Compile and Release
 
 on:
- pull_request:
-   branches:
-     - main
+  pull_request:
+    branches:
+      - main
 #  push:
 #    branches:
 #      - test-release
@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - x86_64-pc-windows-gnu
+          #- x86_64-pc-windows-gnu
           - x86_64-unknown-linux-gnu
           #- aarch64-apple-darwin
           - aarch64-unknown-linux-gnu
@@ -62,7 +62,7 @@ jobs:
         run: echo "version=$(grep ^version Cargo.toml | egrep -o '[[:digit:].]+')" >> $GITHUB_OUTPUT
 
       # Check if tage exists. exists=1 if set, 0 otherwise.
-      - name: 'Check: if the tag is created'
+      - name: "Check: if the tag is created"
         id: tagged
         shell: bash
         run: git show-ref --tags --verify --quiet refs/tags/v${{ steps.get-cargo-version.outputs.version }} && echo exists=1 || echo exists=0 >> $GITHUB_OUTPUT
