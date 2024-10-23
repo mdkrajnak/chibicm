@@ -1,27 +1,33 @@
 pub mod ca;
 
-use crate::ca::{CaError};
-use clap::{ArgMatches};
+use crate::ca::CaError;
+use clap::ArgMatches;
 use openssl::error::ErrorStack;
 use openssl::x509::{X509Name, X509NameBuilder};
-use std::io::Write;
 use std::fs;
+use std::io::Write;
 
 pub fn append_file(fname: &str, bytes: &Vec<u8>) -> Result<(), CaError> {
     let mut data_file = match fs::OpenOptions::new().create(true).append(true).open(fname) {
         Ok(f) => f,
-        Err(err) => return Err(CaError::new(format!("Unable to append to file {fname}: {err}"))),
+        Err(err) => {
+            return Err(CaError::new(format!(
+                "Unable to append to file {fname}: {err}"
+            )))
+        }
     };
     match data_file.write_all(bytes.as_ref()) {
         Ok(()) => Ok(()),
-        Err(err) => Err(CaError::new(format!("Unable to append to file {fname}: {err}"))),
+        Err(err) => Err(CaError::new(format!(
+            "Unable to append to file {fname}: {err}"
+        ))),
     }
 }
 
 pub fn read_file(fname: &str) -> Result<Vec<u8>, CaError> {
     match fs::read(fname) {
         Ok(data) => Ok(data),
-        Err(err) => Err(CaError::new(format!("Unable to write file {fname}: {err}"))),
+        Err(err) => Err(CaError::new(format!("Unable to read file {fname}: {err}"))),
     }
 }
 
@@ -36,8 +42,13 @@ pub fn write_file(fname: &str, bytes: &Vec<u8>) -> Result<(), CaError> {
     }
 }
 
-pub fn add_arg_to_name(x509_builder: &mut X509NameBuilder, args: &ArgMatches, arg_name: &str, x509_name: &str) -> Result<(), ErrorStack> {
-    let arg : Option<&String> = args.get_one(arg_name);
+pub fn add_arg_to_name(
+    x509_builder: &mut X509NameBuilder,
+    args: &ArgMatches,
+    arg_name: &str,
+    x509_name: &str,
+) -> Result<(), ErrorStack> {
+    let arg: Option<&String> = args.get_one(arg_name);
     if let Some(value) = arg {
         if !value.is_empty() {
             x509_builder.append_entry_by_text(x509_name, value)?;
@@ -74,21 +85,21 @@ pub fn is_all_digits(string: &str) -> bool {
 // Pad the start time argument if the hours/minutes/seconds have been truncated.
 pub fn start_time_from_arg(text: &str) -> Result<String, String> {
     if !is_all_digits(text) {
-        return Err(format!("The start time given: {text}, contains characters that are not digits"));
+        return Err(format!(
+            "The start time given: {text}, contains characters that are not digits"
+        ));
     }
     if text.len() == 8 {
-        return Ok(format!("{text}000000"))
+        return Ok(format!("{text}000000"));
     }
     if text.len() == 10 {
-        return Ok(format!("{text}0000"))
+        return Ok(format!("{text}0000"));
     }
     if text.len() == 12 {
-        return Ok(format!("{text}00"))
+        return Ok(format!("{text}00"));
     }
     if text.len() == 14 {
-        return Ok(text.to_string())
+        return Ok(text.to_string());
     }
     Err(format!("{text} must be in YYYYMMDD, YYYYMMDDHH, YYYYMMDDHHMM, or YYYYMMDDHHMMSS format. Times must be UTC."))
 }
-
-
